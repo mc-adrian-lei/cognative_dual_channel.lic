@@ -1,0 +1,224 @@
+Here is a concise `README.md` for the dual-channel cognitive architecture you just built.
+
+***
+
+# Cognitive Architecture with Dual-Channel Output
+
+This project implements a cognitive architecture that combines:
+
+- Pattern recognition over symbolic input signals  
+- Three-threaded decision-making (Structural, Metabolic, Social)  
+- Dual-channel rendering of system behavior:
+  - **Symbolic channel** (formal, compact, math/logic oriented)
+  - **Non-symbolic channel** (narrative, human-readable explanation)
+
+The design is inspired by neurosymbolic cognitive architectures and dual-channel reasoning models, where symbolic structure and intuitive narrative coexist and cross-validate each other.[1][2][3][4]
+
+***
+
+## Core Concepts
+
+### 1. Pattern Recognition Layer (Thread 0)
+
+- `KnowledgeBase` stores canonical **Archetypes** as bit-string signatures (e.g., `CRISIS_EVENT`, `OPPORTUNITY`, `SOCIAL_CONFLICT`).
+- `get_highest_match(signal)` computes a similarity score (Resonance) between an incoming signal and each known pattern using `difflib.SequenceMatcher`.
+- `get_archetype_recommendation(archetype)` returns metadata:
+  - `primary_pathway` (which pathway is preferred)
+  - `urgency` (HIGH / MEDIUM / LOW / CRITICAL)
+
+This layer maps raw signals to high-level archetypes and recommended routing.
+
+***
+
+### 2. Three-Threaded Braiding
+
+Inside `CognitiveArchitecture`, every request is processed through three conceptual threads:
+
+1. **Structural Logic (Thread 1)**  
+   - Implemented via `Pathway` subclasses:
+     - `TransparencyPathway`
+     - `NonDisclosurePathway`
+     - `HybridBalancedPathway`
+   - Each pathway exposes:
+     - `evaluate_suitability(input_x) -> float`
+     - `process(input_x) -> Dict`
+   - `ProcessTrace` records intent, conflict type, guardrail state, and detected archetype.
+
+2. **Metabolic Cost (Thread 2)**  
+   - `ResourceScheduler` estimates and logs resource usage:
+     - `compute_cost`, `memory_cost`, `latency_cost`, `total_cost`
+   - `estimate_cost(pathway_name, input_x)` returns an efficiency score in \([0, 1]\).
+   - `vitality` tracks overall system energy and decays as costs accumulate.
+
+3. **Social Impact (Thread 3)**  
+   - `SocialScorer` maintains:
+     - `reputation_status` (NEUTRAL / TESTING / CONSTRUCTIVE)
+     - `trust_score`, `compliance_score`, `transparency_score`
+   - `evaluate(pathway_name, input_x)` outputs a social impact score.
+   - `update_feedback(...)` updates trust and reputation based on pathway outputs.
+
+**Pathway selection** braids the three threads:
+
+\[
+\text{combined\_score} = 0.4 \cdot \text{suitability} + 0.35 \cdot \text{resource\_efficiency} + 0.25 \cdot \text{social\_score}
+\]
+
+The pathway with the highest combined score is chosen.[2][5][1]
+
+***
+
+### 3. Dual-Channel Output Renderer
+
+The **same execution record** is rendered through two independent lenses:
+
+- `DualChannelRenderer.render_symbolic_channel(execution_record) -> str`  
+  - Produces a compact, formal representation (pseudo-math / logic), e.g.:
+
+    ```text
+    EXEC_RECORD {
+      T0: PATTERN_REC {
+        A: "CRISIS_EVENT"
+        R: 0.90
+        M: {P: "hybrid", U: "HIGH"}
+      }
+      T1: SELECT {
+        S(tran) = 0.95 × 0.89 × 0.78 = 0.661
+        → SELECT: "transparency"
+      }
+      T2: METAB {V: 91.3, E: 0.84}
+      T3: SOCIAL {Rep: "CONSTRUCTIVE", Trust: 0.58}
+    }
+    ```
+
+- `DualChannelRenderer.render_non_symbolic_channel(execution_record) -> str`  
+  - Produces a narrative explanation:
+
+    ```text
+    A CRISIS_EVENT pattern has been detected with high resonance (90%).
+    The system recommends routing through a Transparency Pathway.
+
+    The three threads braid together:
+
+    Structurally, the selected pathway shows strong suitability (95%),
+    reinforced by the archetype’s recommendation. Resources are used
+    efficiently (84%), preserving system vitality at 91.3. Socially, the
+    system’s reputation moves toward CONSTRUCTIVE behavior with trust
+    increasing (58%).
+
+    This decision bridges structural necessity, resource efficiency, and
+    relational impact into a coherent, synchronized action.
+    ```
+
+`CognitiveArchitecture.print_dual_channel_output(execution_record)` prints both channels side-by-side as a **double text box overlay** in the terminal.
+
+***
+
+## Execution Flow
+
+For each request:
+
+1. **Pattern Recognition**
+   - Input: `signal_signature` (e.g., `"1111111000"`)
+   - Output: `(archetype, resonance, metadata)`
+
+2. **Input Enrichment**
+   - Adds:
+     - `detected_archetype`
+     - `archetype_resonance`
+     - `archetype_metadata`
+     - `suggested_pathway` (if resonance ≥ threshold)
+     - `urgency_level`
+
+3. **Pathway Selection**
+   - Each pathway:
+     - Computes `suitability`
+     - Gets `resource_efficiency` from `ResourceScheduler`
+     - Gets `social_score` from `SocialScorer`
+   - Suggested pathway gets a 15% boost to `suitability`.
+
+4. **Execution**
+   - Selected pathway’s `process()` returns output and `ProcessTrace`.
+
+5. **Metabolic & Social Updates**
+   - `ResourceScheduler.log_usage(...)` updates vitality and logs metrics.
+   - `SocialScorer.update_feedback(...)` updates reputation and trust.
+
+6. **Dual-Channel Rendering**
+   - `print_dual_channel_output(execution_record)` displays symbolic and narrative views of the same decision.
+
+***
+
+## Files
+
+- `cognitive_arch_integrated.py`  
+  Original integrated architecture with pattern recognition and three-threaded braiding.
+- `cognitive_dual_channel.py`  
+  Extended version with **DualChannelRenderer** and dual-channel output.
+
+***
+
+## How to Run
+
+1. Ensure Python 3.9+ is installed.
+2. Run:
+
+```bash
+python cognitive_dual_channel.py
+```
+
+You will see, for each test case:
+
+- Archetype detection and routing suggestions.
+- Pathway selection scores per thread.
+- Dual-channel output (symbolic ↔ non-symbolic) printed side-by-side.
+- Final vitality and reputation state after all executions.
+
+***
+
+## Design Rationale
+
+This architecture is a lightweight, experimental sandbox for:
+
+- Exploring **neurosymbolic** blends of structured logic and narrative explanation.[6][3][1]
+- Prototyping **interpretable decision traces** where internal reasoning is visible in both code-like and story-like forms.[7][8]
+- Reflecting dual-channel processing ideas (formal vs. intuitive) that echo cognitive and multimedia learning theories.[9][10][2]
+
+It is intentionally compact and self-contained, making it suitable for further extension into multi-modal, agentic, or real-time systems.
+
+***
+
+If you want, the next step can be to:
+
+- Add a **third channel** (e.g., JSON/graph representation for visualization), or  
+- Plug this into a real LLM loop where the narrative channel is what the user sees and the symbolic channel is logged for introspection and debugging.
+
+[1](https://arxiv.org/pdf/2308.03990.pdf)
+[2](https://downloads.hindawi.com/journals/complexity/2021/7367181.pdf)
+[3](https://baicsworkshop.github.io/pdf/BAICS_36.pdf)
+[4](https://www.scribd.com/document/824517579/DUAL-cognitive-architecture)
+[5](https://arxiv.org/html/2503.23760v3)
+[6](https://arxiv.org/pdf/2402.00591.pdf)
+[7](https://aclanthology.org/2023.findings-acl.832.pdf)
+[8](https://aclanthology.org/2022.acl-long.338.pdf)
+[9](https://fox-ae.com/the-science-behind-multimedia-learning-harnessing-the-dual-channel-theory/)
+[10](https://en.wikiversity.org/wiki/Instructional_design/Reducing_cognitive_load_in_multimedia_instruction/Cognitive_Theory_of_Multimedia_Learning)
+[11](https://www.semanticscholar.org/paper/8997e529191b4d1b82529df04f594cbfe1109582)
+[12](https://www.semanticscholar.org/paper/4a8f7d284c53da64d18fe8718b2bb2606477ff8e)
+[13](http://arxiv.org/pdf/2302.09646.pdf)
+[14](https://arxiv.org/html/2503.24110v1)
+[15](https://arxiv.org/html/2502.04558v1)
+[16](https://github.com/daveshap/NaturalLanguageCognitiveArchitecture)
+[17](https://github.com/entrepeneur4lyf/cognitive-prompt-architecture)
+[18](https://dev.to/derhnyel/multi-threading-in-python-5h80)
+[19](https://huggingface.co/dembot/CrystallineConciousness/blob/main/README.md)
+[20](https://www.intel.com/content/www/us/en/developer/articles/technical/easy-guide-to-multithreading-in-python.html)
+[21](https://neurosymbolic-ai-journal.com/system/files/nai-paper-670.pdf)
+[22](https://www.dartai.com/templates/project-readme)
+[23](https://towardsdatascience.com/multithreading-multiprocessing-python-180d0975ab29/)
+[24](https://www.sciencedirect.com/science/article/pii/S030645732500069X)
+[25](https://github.com/entrepeneur4lyf/engineered-meta-cognitive-workflow-architecture)
+[26](https://www.geeksforgeeks.org/python/multithreading-python-set-1/)
+[27](https://pubmed.ncbi.nlm.nih.gov/34314088/)
+[28](https://mnemoverse.com/docs/architecture/experience-layer/README)
+[29](https://www.reddit.com/r/ArtificialSentience/comments/1oy65td/a_userlevel_cognitive_architecture_emerged_across/)
+[30](https://raw.githubusercontent.com/gabe-czako/SOAR/main/README.pdf)
