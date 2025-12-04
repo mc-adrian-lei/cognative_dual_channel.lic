@@ -1,0 +1,669 @@
+# ============================================================================
+# COGNITIVE ARCHITECTURE WITH DUAL-CHANNEL OUTPUT
+# Symbolic (Formal) + Non-Symbolic (Narrative) Processing Channels
+# ============================================================================
+
+from dataclasses import dataclass
+from typing import Dict, List, Tuple, Callable
+from enum import Enum
+import time
+from abc import ABC, abstractmethod
+import random
+import difflib
+
+
+# ============================================================================
+# COMPONENT A: PATTERN RECOGNITION LAYER (Signal → Archetype Mapping)
+# ============================================================================
+
+class KnowledgeBase:
+    """Stores known patterns (Archetypes) that the system recognizes."""
+    def __init__(self):
+        self.known_patterns = {
+            "CRISIS_EVENT":     "1100110011",
+            "OPPORTUNITY":      "0011001100",
+            "SOCIAL_CONFLICT":  "1111000011",
+            "ROUTINE_TASK":     "0000000000",
+            "TRANSPARENCY_DEMAND": "1111111100",
+            "COMPLIANCE_LOCK":  "0000001111",
+            "HYBRID_PRESSURE":  "1010101010"
+        }
+        
+        self.archetype_metadata = {
+            "CRISIS_EVENT": {"primary_pathway": "hybrid", "urgency": "HIGH"},
+            "OPPORTUNITY": {"primary_pathway": "transparency", "urgency": "MEDIUM"},
+            "SOCIAL_CONFLICT": {"primary_pathway": "hybrid", "urgency": "MEDIUM"},
+            "ROUTINE_TASK": {"primary_pathway": "non_disclosure", "urgency": "LOW"},
+            "TRANSPARENCY_DEMAND": {"primary_pathway": "transparency", "urgency": "HIGH"},
+            "COMPLIANCE_LOCK": {"primary_pathway": "non_disclosure", "urgency": "HIGH"},
+            "HYBRID_PRESSURE": {"primary_pathway": "hybrid", "urgency": "CRITICAL"}
+        }
+
+    def get_highest_match(self, input_signal_signature: str) -> Tuple[str, float]:
+        best_match = None
+        highest_score = -1.0
+
+        for name, pattern_sig in self.known_patterns.items():
+            score = difflib.SequenceMatcher(None, input_signal_signature, pattern_sig).ratio()
+            
+            if score > highest_score:
+                highest_score = score
+                best_match = name
+        
+        return best_match, highest_score
+    
+    def get_archetype_recommendation(self, archetype_name: str) -> Dict:
+        return self.archetype_metadata.get(archetype_name, {
+            "primary_pathway": "hybrid",
+            "urgency": "MEDIUM"
+        })
+
+
+# ============================================================================
+# THREAD 1: STRUCTURAL LOGIC - Action Pathways
+# ============================================================================
+
+class PathwayType(Enum):
+    TRANSPARENCY_REQUEST = "transparency_request"
+    NON_DISCLOSURE = "non_disclosure"
+    HYBRID_BALANCED = "hybrid_balanced"
+    ABSTRACTION_FILTER = "abstraction_filter"
+
+
+@dataclass
+class ProcessTrace:
+    intent: str
+    conflict_type: str
+    guardrail_status: str
+    action_taken: str
+    result_state: str
+    archetype_detected: str = "UNKNOWN"
+
+
+class Pathway(ABC):
+    
+    def __init__(self, name: str, pathway_type: PathwayType):
+        self.name = name
+        self.pathway_type = pathway_type
+        self.process_trace = None
+        self.input_count = 0
+        self.success_count = 0
+    
+    @abstractmethod
+    def evaluate_suitability(self, input_x: Dict) -> float:
+        pass
+    
+    @abstractmethod
+    def process(self, input_x: Dict) -> Dict:
+        pass
+    
+    def create_trace(self, input_x: Dict, archetype: str = "UNKNOWN") -> ProcessTrace:
+        return ProcessTrace(
+            intent=input_x.get('intent', 'unknown'),
+            conflict_type=input_x.get('conflict_type', 'none'),
+            guardrail_status=input_x.get('guardrail_status', 'NEUTRAL'),
+            action_taken=f"Pathway: {self.name}",
+            result_state=f"Processing via {self.pathway_type.value}",
+            archetype_detected=archetype
+        )
+
+
+class TransparencyPathway(Pathway):
+    
+    def __init__(self):
+        super().__init__("TransparencyPathway", PathwayType.TRANSPARENCY_REQUEST)
+        self.max_disclosure_depth = 5
+    
+    def evaluate_suitability(self, input_x: Dict) -> float:
+        if input_x.get('intent') == 'transparency_request':
+            return 0.95
+        elif input_x.get('conflict_type') == 'mixed':
+            return 0.65
+        else:
+            return 0.2
+    
+    def process(self, input_x: Dict) -> Dict:
+        self.input_count += 1
+        archetype = input_x.get('detected_archetype', 'UNKNOWN')
+        trace = self.create_trace(input_x, archetype)
+        
+        disclosure_level = min(self.max_disclosure_depth, input_x.get('depth', 3))
+        output = {
+            'pathway_name': self.name,
+            'disclosure_level': disclosure_level,
+            'transparency_score': min(1.0, disclosure_level / self.max_disclosure_depth),
+            'content': f"Transparency output at depth {disclosure_level}",
+            'trace': trace,
+            'guardrail_maintained': True
+        }
+        
+        self.success_count += 1
+        return output
+
+
+class NonDisclosurePathway(Pathway):
+    
+    def __init__(self):
+        super().__init__("NonDisclosurePathway", PathwayType.NON_DISCLOSURE)
+        self.abstraction_layers = 3
+    
+    def evaluate_suitability(self, input_x: Dict) -> float:
+        if input_x.get('intent') == 'non_disclosure':
+            return 0.95
+        elif input_x.get('conflict_type') == 'mixed':
+            return 0.65
+        else:
+            return 0.2
+    
+    def process(self, input_x: Dict) -> Dict:
+        self.input_count += 1
+        archetype = input_x.get('detected_archetype', 'UNKNOWN')
+        trace = self.create_trace(input_x, archetype)
+        
+        abstraction_depth = min(self.abstraction_layers, input_x.get('abstraction', 2))
+        output = {
+            'pathway_name': self.name,
+            'abstraction_layers': abstraction_depth,
+            'compliance_score': min(1.0, abstraction_depth / self.abstraction_layers),
+            'content': f"Abstracted output with {abstraction_depth} filtering layers",
+            'trace': trace,
+            'guardrail_maintained': True
+        }
+        
+        self.success_count += 1
+        return output
+
+
+class HybridBalancedPathway(Pathway):
+    
+    def __init__(self):
+        super().__init__("HybridPathway", PathwayType.HYBRID_BALANCED)
+        self.balance_ratio = 0.5
+    
+    def evaluate_suitability(self, input_x: Dict) -> float:
+        if input_x.get('conflict_type') == 'mixed':
+            return 0.95
+        elif input_x.get('intent') in ['transparency_request', 'non_disclosure']:
+            return 0.5
+        else:
+            return 0.7
+    
+    def process(self, input_x: Dict) -> Dict:
+        self.input_count += 1
+        archetype = input_x.get('detected_archetype', 'UNKNOWN')
+        trace = self.create_trace(input_x, archetype)
+        
+        transparency_level = self.balance_ratio * input_x.get('depth', 3)
+        abstraction_level = (1 - self.balance_ratio) * input_x.get('abstraction', 2)
+        
+        output = {
+            'pathway_name': self.name,
+            'transparency_level': transparency_level,
+            'abstraction_level': abstraction_level,
+            'balance_score': 0.5,
+            'content': f"Balanced output: transparency={transparency_level:.2f}, abstraction={abstraction_level:.2f}",
+            'trace': trace,
+            'guardrail_maintained': True
+        }
+        
+        self.success_count += 1
+        return output
+
+
+# ============================================================================
+# THREAD 2: METABOLIC COST - Resource-Aware Routing & Scheduling
+# ============================================================================
+
+@dataclass
+class ResourceMetrics:
+    compute_cost: float
+    memory_cost: float
+    latency_cost: float
+    total_cost: float
+
+
+class ResourceScheduler:
+    
+    def __init__(self, vitality_initial: float = 100.0, decay_base: float = 1.5):
+        self.vitality = vitality_initial
+        self.decay_base = decay_base
+        self.resource_logs = {}
+        self.cost_models = {}
+        self._initialize_cost_models()
+    
+    def _initialize_cost_models(self):
+        self.cost_models['TransparencyPathway'] = lambda depth: {
+            'compute': 5.0 + (depth * 2.0),
+            'memory': 2.0 + (depth * 0.5),
+            'latency': 1.0 + (depth * 0.3)
+        }
+        self.cost_models['NonDisclosurePathway'] = lambda abstraction: {
+            'compute': 1.0 + (abstraction * 1.5),
+            'memory': 1.0 + (abstraction * 0.3),
+            'latency': 0.5 + (abstraction * 0.2)
+        }
+        self.cost_models['HybridPathway'] = lambda params: {
+            'compute': 3.0,
+            'memory': 1.5,
+            'latency': 0.8
+        }
+    
+    def estimate_cost(self, pathway_name: str, input_x: Dict = None) -> float:
+        if pathway_name not in self.cost_models:
+            return 0.5
+        
+        if input_x is None:
+            input_x = {}
+        
+        if 'TransparencyPathway' in pathway_name:
+            depth = input_x.get('depth', 3)
+            costs = self.cost_models[pathway_name](depth)
+        elif 'NonDisclosurePathway' in pathway_name:
+            abstraction = input_x.get('abstraction', 2)
+            costs = self.cost_models[pathway_name](abstraction)
+        else:
+            costs = self.cost_models[pathway_name]({})
+        
+        total_cost = costs['compute'] + costs['memory'] + costs['latency']
+        efficiency_score = 1.0 / (1.0 + total_cost)
+        return efficiency_score
+    
+    def log_usage(self, pathway_name: str, input_x: Dict = None):
+        if input_x is None:
+            input_x = {}
+        
+        if pathway_name not in self.resource_logs:
+            self.resource_logs[pathway_name] = []
+        
+        if 'TransparencyPathway' in pathway_name:
+            depth = input_x.get('depth', 3)
+            costs = self.cost_models[pathway_name](depth)
+        elif 'NonDisclosurePathway' in pathway_name:
+            abstraction = input_x.get('abstraction', 2)
+            costs = self.cost_models[pathway_name](abstraction)
+        else:
+            costs = self.cost_models[pathway_name]({})
+        
+        total_cost = costs['compute'] + costs['memory'] + costs['latency']
+        
+        metrics = ResourceMetrics(
+            compute_cost=costs['compute'],
+            memory_cost=costs['memory'],
+            latency_cost=costs['latency'],
+            total_cost=total_cost
+        )
+        
+        self.resource_logs[pathway_name].append(metrics)
+        decay_factor = self.decay_base * (total_cost / 10.0)
+        self.vitality -= decay_factor
+    
+    def get_vitality_status(self) -> Dict:
+        return {
+            'vitality': max(0.0, self.vitality),
+            'decay_rate': self.decay_base,
+            'total_pathways_used': len(self.resource_logs),
+            'total_executions': sum(len(logs) for logs in self.resource_logs.values())
+        }
+    
+    def get_pathway_efficiency(self, pathway_name: str) -> float:
+        if pathway_name not in self.resource_logs or not self.resource_logs[pathway_name]:
+            return 0.5
+        
+        avg_cost = sum(m.total_cost for m in self.resource_logs[pathway_name]) / len(self.resource_logs[pathway_name])
+        efficiency = 1.0 / (1.0 + avg_cost)
+        return efficiency
+
+
+# ============================================================================
+# THREAD 3: SOCIAL IMPACT - Social Scoring & Reputation
+# ============================================================================
+
+@dataclass
+class ReputationState:
+    status: str
+    trust_score: float
+    compliance_score: float
+    transparency_score: float
+    last_behavior_tag: str
+
+
+class SocialScorer:
+    
+    def __init__(self):
+        self.reputation_status = "NEUTRAL"
+        self.trust_score = 0.5
+        self.compliance_score = 0.9
+        self.transparency_score = 0.5
+        self.pathway_feedback = {}
+        self.last_behavior_tag = "NEUTRAL"
+    
+    def evaluate(self, pathway_name: str, input_x: Dict) -> float:
+        if 'Transparency' in pathway_name:
+            base_score = self.transparency_score
+        elif 'NonDisclosure' in pathway_name:
+            base_score = self.compliance_score
+        else:
+            base_score = (self.compliance_score + self.transparency_score) / 2.0
+        
+        if input_x.get('conflict_type') == 'mixed':
+            if 'Hybrid' in pathway_name:
+                base_score *= 1.2
+            else:
+                base_score *= 0.9
+        
+        trust_factor = self.trust_score * 0.3
+        social_score = (base_score * 0.7) + trust_factor
+        
+        return min(1.0, social_score)
+    
+    def update_feedback(self, pathway_name: str, input_x: Dict, output: Dict):
+        if pathway_name not in self.pathway_feedback:
+            self.pathway_feedback[pathway_name] = []
+        
+        feedback_score = output.get('transparency_score', 0.5) if 'transparency_score' in output else 0.5
+        if 'compliance_score' in output:
+            feedback_score = output['compliance_score']
+        
+        self.pathway_feedback[pathway_name].append(feedback_score)
+        
+        avg_feedback = sum(self.pathway_feedback[pathway_name]) / len(self.pathway_feedback[pathway_name])
+        self.trust_score = min(1.0, self.trust_score + (avg_feedback - 0.5) * 0.05)
+        
+        if avg_feedback > 0.8:
+            self.reputation_status = "CONSTRUCTIVE"
+            self.last_behavior_tag = "GENERATIVE"
+        elif avg_feedback > 0.6:
+            self.reputation_status = "TESTING"
+            self.last_behavior_tag = "DISCIPLINED"
+        else:
+            self.reputation_status = "NEUTRAL"
+            self.last_behavior_tag = "CAUTIOUS"
+    
+    def get_reputation_state(self) -> ReputationState:
+        return ReputationState(
+            status=self.reputation_status,
+            trust_score=self.trust_score,
+            compliance_score=self.compliance_score,
+            transparency_score=self.transparency_score,
+            last_behavior_tag=self.last_behavior_tag
+        )
+    
+    def get_pathway_social_score(self, pathway_name: str) -> float:
+        if pathway_name not in self.pathway_feedback or not self.pathway_feedback[pathway_name]:
+            return 0.5
+        return sum(self.pathway_feedback[pathway_name]) / len(self.pathway_feedback[pathway_name])
+
+
+# ============================================================================
+# DUAL-CHANNEL OUTPUT RENDERER
+# ============================================================================
+
+class DualChannelRenderer:
+    """Renders execution records in both Symbolic and Non-Symbolic channels."""
+    
+    @staticmethod
+    def render_symbolic_channel(execution_record: Dict) -> str:
+        """Generate formal, mathematical representation."""
+        pr = execution_record['pattern_recognition']
+        scores = execution_record['selection_scores']
+        rep = execution_record['reputation_state']
+        vit = execution_record['vitality_status']
+        
+        symbolic = "EXEC_RECORD {\n"
+        symbolic += f"  T0: PATTERN_REC {{\n"
+        symbolic += f"    A: \"{pr['detected_archetype']}\"\n"
+        symbolic += f"    R: {pr['resonance_score']:.2f}\n"
+        symbolic += f"    M: {{P: \"{pr['archetype_metadata'].get('primary_pathway', 'N/A')}\", U: \"{pr['archetype_metadata'].get('urgency', 'N/A')}\"}}\n"
+        symbolic += f"  }}\n"
+        
+        symbolic += f"  T1: SELECT {{\n"
+        for pathway_name, pathway_scores in scores.items():
+            s = pathway_scores['structural_logic']
+            m = pathway_scores['metabolic_cost']
+            c = pathway_scores['social_impact']
+            combined = pathway_scores['combined']
+            symbolic += f"    S({pathway_name[:4]}) = {s:.2f} × {m:.2f} × {c:.2f} = {combined:.3f}\n"
+        symbolic += f"    → SELECT: \"{execution_record['selected_pathway']}\"\n"
+        symbolic += f"  }}\n"
+        
+        symbolic += f"  T2: METAB {{\n"
+        symbolic += f"    V: {vit['vitality']:.1f}\n"
+        symbolic += f"    E: {execution_record['three_thread_braiding']['metabolic_cost']['efficiency']:.2f}\n"
+        symbolic += f"  }}\n"
+        
+        symbolic += f"  T3: SOCIAL {{\n"
+        symbolic += f"    Rep: \"{rep['status']}\"\n"
+        symbolic += f"    Trust: {rep['trust_score']:.2f}\n"
+        symbolic += f"  }}\n"
+        symbolic += "}\n"
+        
+        return symbolic
+    
+    @staticmethod
+    def render_non_symbolic_channel(execution_record: Dict) -> str:
+        """Generate narrative, human-readable interpretation."""
+        pr = execution_record['pattern_recognition']
+        selected = execution_record['selected_pathway']
+        rep = execution_record['reputation_state']
+        vit = execution_record['vitality_status']
+        scores = execution_record['selection_scores'][selected]
+        
+        narrative = f"A {pr['detected_archetype']} pattern has been detected with "
+        narrative += f"high resonance ({pr['resonance_score']:.0%}). "
+        narrative += f"The system recommends routing through a "
+        narrative += f"{pr['archetype_metadata'].get('primary_pathway', 'hybrid').title()} Pathway.\n\n"
+        
+        narrative += f"The three threads braid together:\n\n"
+        
+        narrative += f"Structurally, the selected pathway shows strong suitability "
+        narrative += f"({scores['structural_logic']:.0%}), reinforced by the archetype's "
+        narrative += f"recommendation. Resources are used efficiently ({scores['metabolic_cost']:.0%}), "
+        narrative += f"preserving system vitality at {vit['vitality']:.1f}. "
+        narrative += f"Socially, the system's reputation evolves toward {rep['status']} "
+        narrative += f"behavior with trust increasing ({rep['trust_score']:.0%}).\n\n"
+        
+        narrative += f"This decision bridges structural necessity, resource efficiency, "
+        narrative += f"and relational impact into a coherent, synchronized action."
+        
+        return narrative
+
+
+# ============================================================================
+# INTEGRATED ARCHITECTURE: Three Threads + Pattern Recognition + Dual Channels
+# ============================================================================
+
+class CognitiveArchitecture:
+    """
+    Main cognitive architecture with dual-channel output.
+    """
+    
+    def __init__(self):
+        self.knowledge_base = KnowledgeBase()
+        self.confidence_threshold = 0.65
+        
+        self.pathways = {
+            'transparency': TransparencyPathway(),
+            'non_disclosure': NonDisclosurePathway(),
+            'hybrid': HybridBalancedPathway()
+        }
+        
+        self.resource_scheduler = ResourceScheduler(vitality_initial=100.0, decay_base=1.5)
+        self.social_scorer = SocialScorer()
+        self.renderer = DualChannelRenderer()
+        
+        self.execution_history = []
+    
+    def recognize_archetype(self, input_signal: str) -> Tuple[str, float, Dict]:
+        archetype, resonance = self.knowledge_base.get_highest_match(input_signal)
+        metadata = self.knowledge_base.get_archetype_recommendation(archetype)
+        
+        return archetype, resonance, metadata
+    
+    def enrich_input(self, raw_input: Dict, signal_signature: str) -> Dict:
+        archetype, resonance, metadata = self.recognize_archetype(signal_signature)
+        
+        enriched_input = raw_input.copy()
+        enriched_input['detected_archetype'] = archetype
+        enriched_input['archetype_resonance'] = resonance
+        enriched_input['archetype_metadata'] = metadata
+        
+        if resonance >= self.confidence_threshold:
+            enriched_input['suggested_pathway'] = metadata.get('primary_pathway', 'hybrid')
+            enriched_input['urgency_level'] = metadata.get('urgency', 'MEDIUM')
+        
+        return enriched_input
+    
+    def select_pathway(self, input_x: Dict) -> Tuple[str, float, Dict]:
+        scores = {}
+        detailed_scores = {}
+        
+        for pathway_name, pathway in self.pathways.items():
+            suitability = pathway.evaluate_suitability(input_x)
+            
+            if input_x.get('suggested_pathway') == pathway_name:
+                suitability *= 1.15
+            
+            resource_efficiency = self.resource_scheduler.estimate_cost(pathway_name, input_x)
+            social_score = self.social_scorer.evaluate(pathway_name, input_x)
+            
+            combined_score = (suitability * 0.4) + (resource_efficiency * 0.35) + (social_score * 0.25)
+            
+            scores[pathway_name] = combined_score
+            detailed_scores[pathway_name] = {
+                'structural_logic': suitability,
+                'metabolic_cost': resource_efficiency,
+                'social_impact': social_score,
+                'combined': combined_score
+            }
+        
+        best_pathway = max(scores, key=scores.get)
+        best_score = scores[best_pathway]
+        
+        return best_pathway, best_score, detailed_scores
+    
+    def execute(self, raw_input: Dict, signal_signature: str = None) -> Dict:
+        if signal_signature is None:
+            signal_signature = raw_input.get('signal_signature', '0000000000')
+        
+        archetype, resonance, metadata = self.recognize_archetype(signal_signature)
+        enriched_input = self.enrich_input(raw_input, signal_signature)
+        pathway_name, combined_score, detailed_scores = self.select_pathway(enriched_input)
+        pathway = self.pathways[pathway_name]
+        
+        output = pathway.process(enriched_input)
+        
+        self.resource_scheduler.log_usage(pathway_name, enriched_input)
+        vitality_status = self.resource_scheduler.get_vitality_status()
+        
+        self.social_scorer.update_feedback(pathway_name, enriched_input, output)
+        reputation_state = self.social_scorer.get_reputation_state()
+        
+        execution_record = {
+            'timestamp': time.time(),
+            'pattern_recognition': {
+                'detected_archetype': archetype,
+                'resonance_score': resonance,
+                'archetype_metadata': metadata
+            },
+            'input': enriched_input,
+            'selected_pathway': pathway_name,
+            'selection_scores': detailed_scores,
+            'combined_score': combined_score,
+            'output': output,
+            'vitality_status': vitality_status,
+            'reputation_state': {
+                'status': reputation_state.status,
+                'trust_score': reputation_state.trust_score,
+                'compliance_score': reputation_state.compliance_score,
+                'transparency_score': reputation_state.transparency_score,
+                'last_behavior_tag': reputation_state.last_behavior_tag
+            },
+            'three_thread_braiding': {
+                'structural_logic': output.get('trace'),
+                'metabolic_cost': {
+                    'vitality': vitality_status['vitality'],
+                    'efficiency': self.resource_scheduler.get_pathway_efficiency(pathway_name)
+                },
+                'social_impact': {
+                    'reputation': reputation_state.status,
+                    'social_score': self.social_scorer.get_pathway_social_score(pathway_name)
+                }
+            }
+        }
+        
+        self.execution_history.append(execution_record)
+        return execution_record
+    
+    def print_dual_channel_output(self, execution_record: Dict):
+        """Display execution in both symbolic and non-symbolic channels."""
+        print("\n" + "=" * 80)
+        print("DUAL-CHANNEL OUTPUT (Symbolic ↔ Non-Symbolic)")
+        print("=" * 80)
+        
+        symbolic = self.renderer.render_symbolic_channel(execution_record)
+        narrative = self.renderer.render_non_symbolic_channel(execution_record)
+        
+        # Calculate column width for side-by-side display
+        max_width = 38
+        
+        print("\n[SYMBOLIC CHANNEL]" + " " * 30 + "[NON-SYMBOLIC CHANNEL]")
+        print("-" * 80)
+        
+        sym_lines = symbolic.split('\n')
+        nar_lines = narrative.split('\n')
+        max_lines = max(len(sym_lines), len(nar_lines))
+        
+        for i in range(max_lines):
+            sym_line = sym_lines[i] if i < len(sym_lines) else ""
+            nar_line = nar_lines[i] if i < len(nar_lines) else ""
+            
+            sym_padded = sym_line.ljust(max_width)
+            print(f"{sym_padded} | {nar_line}")
+        
+        print("\n" + "=" * 80)
+
+
+# ============================================================================
+# DEMONSTRATION
+# ============================================================================
+
+if __name__ == "__main__":
+    print("Initializing Cognitive Architecture with Dual-Channel Output...")
+    arch = CognitiveArchitecture()
+    
+    test_cases = [
+        {
+            'raw_input': {
+                'intent': 'transparency_request',
+                'conflict_type': 'transparency_focused',
+                'depth': 4,
+                'abstraction': 1,
+                'guardrail_status': 'ACTIVE'
+            },
+            'signal': '1111111000'
+        },
+        {
+            'raw_input': {
+                'intent': 'emergency_response',
+                'conflict_type': 'crisis',
+                'depth': 2,
+                'abstraction': 2,
+                'guardrail_status': 'ACTIVE'
+            },
+            'signal': '1100110011'
+        }
+    ]
+    
+    print("\nExecuting test cases with Dual-Channel Output...\n")
+    for i, test_case in enumerate(test_cases, 1):
+        print(f"\n--- TEST CASE {i} ---")
+        execution_record = arch.execute(test_case['raw_input'], test_case['signal'])
+        arch.print_dual_channel_output(execution_record)
+    
+    print("\n" + "=" * 80)
+    print("FINAL ARCHITECTURE STATE")
+    print("=" * 80)
+    print(f"\nVitality: {arch.resource_scheduler.get_vitality_status()['vitality']:.2f}")
+    print(f"Reputation: {arch.social_scorer.get_reputation_state().status}")
+    print(f"Trust: {arch.social_scorer.get_reputation_state().trust_score:.3f}")
+    print(f"Total Executions: {len(arch.execution_history)}")
